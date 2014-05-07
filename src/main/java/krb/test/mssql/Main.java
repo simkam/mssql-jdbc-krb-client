@@ -25,6 +25,9 @@ public class Main {
             Logger logger = Logger.getLogger("com.microsoft.sqlserver.jdbc.internals.KerbAuthentication");
             logger.setLevel(Level.FINER);
 
+            // use keytab
+            System.setProperty("java.security.auth.login.config", new File("login.conf").getAbsolutePath());
+
             System.setProperty("java.security.krb5.realm", "MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
             System.setProperty("java.security.krb5.kdc", "DC1.msdomain.mw.lab.eng.bos.redhat.com");
             System.setProperty("java.security.krb5.conf", new File("krb5.conf").getAbsolutePath());
@@ -48,6 +51,11 @@ public class Main {
             while (rs.next())
                 System.out.println("User is: " + rs.getString(1));
             rs.close();
+            // get auth type -- need permission
+//            rs = stmt.executeQuery("select auth_scheme from sys.dm_exec_connections where session_id=@@spid;");
+//            while (rs.next())
+//                System.out.println("Auth type: " + rs.getString(1));
+//            rs.close();
         } finally {
             if (stmt != null)
                 stmt.close();
