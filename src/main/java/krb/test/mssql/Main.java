@@ -25,7 +25,7 @@ public class Main {
             Logger logger = Logger.getLogger("com.microsoft.sqlserver.jdbc.internals.KerbAuthentication");
             logger.setLevel(Level.FINER);
 
-            System.setProperty("java.security.krb5.realm", "msdomain.mw.lab.eng.bos.redhat.com");
+            System.setProperty("java.security.krb5.realm", "MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
             System.setProperty("java.security.krb5.kdc", "DC1.msdomain.mw.lab.eng.bos.redhat.com");
             System.setProperty("java.security.krb5.conf", new File("krb5.conf").getAbsolutePath());
             System.setProperty("sun.security.krb5.debug", "true");
@@ -44,7 +44,7 @@ public class Main {
         Statement stmt = null;
         try {
             stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT CURRENT_USER;");
+            ResultSet rs = stmt.executeQuery("SELECT SYSTEM_USER;");
             while (rs.next())
                 System.out.println("User is: " + rs.getString(1));
             rs.close();
