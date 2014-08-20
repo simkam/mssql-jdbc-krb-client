@@ -21,6 +21,10 @@
             </snapshots>
             <url>file://${project.basedir}/lib</url>
         </repository>
+        <repository>
+            <id>JBoss repository</id>
+            <url>http://repository.jboss.org/nexus/content/groups/public/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -28,6 +32,12 @@
             <groupId>com.microsoft.jdbc</groupId>
             <artifactId>mssql2008r2</artifactId>
             <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.security</groupId>
+            <artifactId>jboss-negotiation-extras</artifactId>
+            <version>2.3.0.Final</version>
         </dependency>
     </dependencies>
 

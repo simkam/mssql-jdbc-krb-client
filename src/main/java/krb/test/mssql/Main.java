@@ -1,14 +1,18 @@
 package krb.test.mssql;
 
-import com.microsoft.sqlserver.jdbc.SQLServerDriver;
-
+import javax.security.auth.Subject;
+import javax.security.auth.login.AppConfigurationEntry;
+import javax.security.auth.login.Configuration;
+import javax.security.auth.login.LoginContext;
 import java.io.File;
+import java.security.PrivilegedExceptionAction;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,30 +21,69 @@ import java.util.logging.Logger;
  */
 public class Main {
 
-    // Dotan's test instance
-    private static final String JDBC_URL = "jdbc:sqlserver://dpaz-win2008.msdomain.mw.lab.eng.bos.redhat.com;DatabaseName=krbusr01;integratedSecurity=true;authenticationScheme=JavaKerberos";
-
+    private static final String JDBC_URL = "jdbc:sqlserver://db06.msdomain.mw.lab.eng.bos.redhat.com;DatabaseName=krbusr01;integratedSecurity=true;authenticationScheme=JavaKerberos";
 
     public static void main(String[] args) throws Exception {
-            Logger logger = Logger.getLogger("com.microsoft.sqlserver.jdbc.internals.KerbAuthentication");
-            logger.setLevel(Level.FINER);
+        Logger logger = Logger.getLogger("com.microsoft.sqlserver.jdbc.internals.KerbAuthentication");
+        logger.setLevel(Level.FINER);
 
-            // use keytab
-            System.setProperty("java.security.auth.login.config", new File("login.conf").getAbsolutePath());
+        System.setProperty("java.security.krb5.realm", "MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
+        System.setProperty("java.security.krb5.kdc", "DC1.msdomain.mw.lab.eng.bos.redhat.com");
+        System.setProperty("java.security.krb5.conf", new File("krb5.conf").getAbsolutePath());
+        System.setProperty("sun.security.krb5.debug", "true");
 
-            System.setProperty("java.security.krb5.realm", "MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
-            System.setProperty("java.security.krb5.kdc", "DC1.msdomain.mw.lab.eng.bos.redhat.com");
-            System.setProperty("java.security.krb5.conf", new File("krb5.conf").getAbsolutePath());
-            System.setProperty("sun.security.krb5.debug", "true");
+        class Krb5LoginConfiguration extends Configuration {
 
-            Properties props = new Properties();
-            //props.put("user", "KRBUSR01@MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
+            private final AppConfigurationEntry[] configList = new AppConfigurationEntry[1];
 
-            DriverManager.registerDriver(new SQLServerDriver());
-            Connection conn = DriverManager.getConnection(JDBC_URL, props);
-            printUserName(conn);
+            public Krb5LoginConfiguration() {
+                Map<String, String> options = new HashMap<String, String>();
+                options.put("storeKey", "false");
+                options.put("useKeyTab", "true");
+                options.put("keyTab", "krbusr01.keytab");
+                options.put("principal", "KRBUSR01@MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
+                options.put("doNotPrompt", "true");
+                options.put("useTicketCache", "true");
+                options.put("refreshKrb5Config", "true");
+                options.put("isInitiator", "true");
+                options.put("addGSSCredential", "true");
+                configList[0] = new AppConfigurationEntry(
+                        "org.jboss.security.negotiation.KerberosLoginModule",
+                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+                        options);
+            }
 
-            conn.close();
+            @Override
+            public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+                return configList;
+            }
+        }
+
+        Configuration.setConfiguration(new Krb5LoginConfiguration());
+        final LoginContext lc = new LoginContext("test");
+        lc.login();
+        Subject subject = lc.getSubject();
+
+
+        Connection conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
+            @Override
+            public Connection run() throws Exception {
+                return DriverManager.getConnection(JDBC_URL);
+            }
+        });
+
+        printUserName(conn);
+        conn.close();
+
+        conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
+            @Override
+            public Connection run() throws Exception {
+                return DriverManager.getConnection(JDBC_URL);
+            }
+        });
+
+        printUserName(conn);
+        conn.close();
     }
 
     private static void printUserName(Connection conn) throws SQLException {
@@ -51,14 +94,11 @@ public class Main {
             while (rs.next())
                 System.out.println("User is: " + rs.getString(1));
             rs.close();
-            // get auth type -- need permission
-//            rs = stmt.executeQuery("select auth_scheme from sys.dm_exec_connections where session_id=@@spid;");
-//            while (rs.next())
-//                System.out.println("Auth type: " + rs.getString(1));
-//            rs.close();
         } finally {
             if (stmt != null)
                 stmt.close();
         }
     }
 }
+
+
