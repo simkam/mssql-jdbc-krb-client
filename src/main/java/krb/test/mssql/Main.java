@@ -13,8 +13,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 /**
  * @author Martin Simka
@@ -24,8 +26,13 @@ public class Main {
     private static final String JDBC_URL = "jdbc:sqlserver://db06.msdomain.mw.lab.eng.bos.redhat.com;DatabaseName=krbusr01;integratedSecurity=true;authenticationScheme=JavaKerberos";
 
     public static void main(String[] args) throws Exception {
-        Logger logger = Logger.getLogger("com.microsoft.sqlserver.jdbc.internals.KerbAuthentication");
-        logger.setLevel(Level.FINER);
+        Logger logger = Logger.getLogger("com.microsoft");
+        logger.setLevel(Level.ALL);
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setFormatter(new SimpleFormatter());
+        handler.setLevel(Level.ALL);
+        logger.addHandler(handler);
+
 
         System.setProperty("java.security.krb5.realm", "MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
         System.setProperty("java.security.krb5.kdc", "DC1.msdomain.mw.lab.eng.bos.redhat.com");
