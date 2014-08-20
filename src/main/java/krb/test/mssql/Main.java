@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -22,15 +22,16 @@ import java.util.logging.SimpleFormatter;
  * @author Martin Simka
  */
 public class Main {
-
+    private static final Logger logger = Logger.getLogger(Main.class.getName());
     private static final String JDBC_URL = "jdbc:sqlserver://db06.msdomain.mw.lab.eng.bos.redhat.com;DatabaseName=krbusr01;integratedSecurity=true;authenticationScheme=JavaKerberos";
 
     public static void main(String[] args) throws Exception {
-        Logger logger = Logger.getLogger("com.microsoft");
-        logger.setLevel(Level.ALL);
-        ConsoleHandler handler = new ConsoleHandler();
+        Logger mslogger = Logger.getLogger("com.microsoft");
+        mslogger.setLevel(Level.ALL);
+        FileHandler handler = new FileHandler("log.txt", false);
         handler.setFormatter(new SimpleFormatter());
         handler.setLevel(Level.ALL);
+        mslogger.addHandler(handler);
         logger.addHandler(handler);
 
 
@@ -51,6 +52,7 @@ public class Main {
                 options.put("principal", "KRBUSR01@MSDOMAIN.MW.LAB.ENG.BOS.REDHAT.COM");
                 options.put("doNotPrompt", "true");
                 options.put("useTicketCache", "true");
+                options.put("ticketCache", "/tmp/krbcc_1000");
                 options.put("refreshKrb5Config", "true");
                 options.put("isInitiator", "true");
                 options.put("addGSSCredential", "true");
@@ -71,26 +73,30 @@ public class Main {
         lc.login();
         Subject subject = lc.getSubject();
 
+        try {
+            Connection conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
+                @Override
+                public Connection run() throws Exception {
+                    return DriverManager.getConnection(JDBC_URL);
+                }
+            });
 
-        Connection conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
-            @Override
-            public Connection run() throws Exception {
-                return DriverManager.getConnection(JDBC_URL);
-            }
-        });
+            printUserName(conn);
+            conn.close();
 
-        printUserName(conn);
-        conn.close();
 
-        conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
-            @Override
-            public Connection run() throws Exception {
-                return DriverManager.getConnection(JDBC_URL);
-            }
-        });
+            conn = Subject.doAs(subject, new PrivilegedExceptionAction<Connection>() {
+                @Override
+                public Connection run() throws Exception {
+                    return DriverManager.getConnection(JDBC_URL);
+                }
+            });
 
-        printUserName(conn);
-        conn.close();
+            printUserName(conn);
+            conn.close();
+        } catch (Throwable t) {
+            logger.log(Level.SEVERE, "", t);
+        }
     }
 
     private static void printUserName(Connection conn) throws SQLException {
@@ -98,8 +104,11 @@ public class Main {
         try {
             stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("SELECT SYSTEM_USER;");
-            while (rs.next())
-                System.out.println("User is: " + rs.getString(1));
+            while (rs.next()) {
+                String username = rs.getString(1);
+                System.out.println("User is: " + username);
+                logger.log(Level.INFO, "User is: " + username);
+            }
             rs.close();
         } finally {
             if (stmt != null)
